@@ -4,7 +4,8 @@
   "description": "serve websites from git repo",
   "main": "index.js",
   "bin": {
-    "servermore": "index.js"
+    "servermore": "index.js",
+    "sm": "index.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
