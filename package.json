@@ -1,0 +1,33 @@
+{
+  "name": "servermore",
+  "version": "0.0.1",
+  "description": "serve websites from git repo",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/he110world/servermore.git"
+  },
+  "keywords": [
+    "severless"
+  ],
+  "author": "he110world@126.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/he110world/servermore/issues"
+  },
+  "homepage": "https://github.com/he110world/servermore#readme",
+  "dependencies": {
+    "bluebird": "^3.5.3",
+    "koa": "^2.7.0",
+    "koa-bodyparser": "^4.2.1",
+    "koa-json": "^2.0.2",
+    "koa-logger": "^3.2.0",
+    "koa-onerror": "^4.1.0",
+    "koa-router": "^7.4.0",
+    "mime-types": "^2.1.21",
+    "optimist": "^0.6.1"
+  }
+}
