@@ -3,9 +3,6 @@
 const argv = require('optimist').argv
 const path = require('path')
 
-//const os = require('os')
-//const ifaces = os.networkInterfaces()
-
 //解析参数
 if (argv.h || argv.help) {
 	require('./lib/help')()
@@ -15,13 +12,6 @@ if (argv.h || argv.help) {
 const opts = {
 	port:		argv.p || argv.port || 8080,
 	root_dir:	argv._[0] || './',
-
-	//file_dir:	argv.f || argv['file-dir'] || 'file',
-	//file_route:	argv['file-route'] || 'file',
-
-	//api_dir:	argv.a || argv['api-dir'] || 'api',
-	//api_route:	argv['api-route'] || 'api',
-
 	list_dir:	!!(argv.l || argv['list-dir']),
 }
 
