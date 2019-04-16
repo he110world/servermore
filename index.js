@@ -57,8 +57,8 @@ const server = app.listen(opts.port, () => {
 	console.log(`servermore listening on port ${opts.port}`)
 })
 
-const backend = require('./lib/backend')
+const main = require('./lib/main')
 opts.router = router
-backend(opts)
+main(opts)
 
 module.exports = server
