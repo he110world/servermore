@@ -21,6 +21,7 @@ if (argv.g || argv.generator) {
 }
 
 //初始化context
+/*
 try{
 	const name = argv.c || argv.context || 'context.js'
 	opts.context = require('./' + path.join(opts.root_dir, name))
@@ -29,6 +30,7 @@ try{
 		console.log('failed to load context script:', argv.c||argv.context)
 	}
 }
+*/
 
 //创建服务器
 const Koa = require('koa')
