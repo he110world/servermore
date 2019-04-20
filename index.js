@@ -11,7 +11,7 @@ if (argv.h || argv.help) {
 
 const opts = {
 	port:		argv.p || argv.port || 8080,
-	root_dir:	argv._[0] || './',
+	root_dir:	(argv._[0] || './').toString(),
 	list_dir:	!!(argv.l || argv['list-dir']),
 }
 
