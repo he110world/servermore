@@ -38,10 +38,12 @@ const json = require('koa-json')
 const onerror = require('koa-onerror')
 const bodyparser = require('koa-bodyparser')
 const logger = require('koa-logger')
+const formidable = require('koa2-formidable')
 
 onerror(app)
 app
 .use(logger())
+.use(formidable())
 .use(bodyparser())
 .use(json())
 .use(router.routes())
