@@ -13,24 +13,13 @@ const opts = {
 	port:		argv.p || argv.port || 8080,
 	root_dir:	(argv._[0] || './').toString(),
 	list_dir:	!!(argv.l || argv['list-dir']),
+	hook:		argv.h || argv.hook || ''
 }
 
 //TODO:生成模板
 if (argv.g || argv.generator) {
 	//避免覆盖现有文件
 }
-
-//初始化context
-/*
-try{
-	const name = argv.c || argv.context || 'context.js'
-	opts.context = require('./' + path.join(opts.root_dir, name))
-}catch(e){
-	if (argv.c || argv.context) {
-		console.log('failed to load context script:', argv.c||argv.context)
-	}
-}
-*/
 
 //创建服务器
 const Koa = require('koa')

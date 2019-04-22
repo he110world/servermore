@@ -33,6 +33,7 @@
     "koa-router": "^7.4.0",
     "mime-types": "^2.1.21",
     "node-watch": "^0.6.0",
-    "optimist": "^0.6.1"
+    "optimist": "^0.6.1",
+    "superagent": "^5.0.2"
   }
 }
