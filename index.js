@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 
-const argv = require('optimist').argv
+const argv = require('optimist')
+		.alias('p','port')
+		.alias('g','generate')
+		.boolean('g').argv
 const path = require('path')
+
 
 //解析参数
 if (argv.h || argv.help) {
@@ -16,10 +20,13 @@ const opts = {
 	hook:		argv.h || argv.hook || ''
 }
 
-//TODO:生成模板
-if (argv.g || argv.generator) {
-	//避免覆盖现有文件
+if (argv.g || argv.generate) {
+	require('./lib/generate')(opts.root_dir)
+
+	console.log(`Project generated. Now run 'sm ${opts.root_dir}' to start the service!`)
+	process.exit()
 }
+
 
 //创建服务器
 const Koa = require('koa')
