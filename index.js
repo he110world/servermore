@@ -1,23 +1,26 @@
 #!/usr/bin/env node
+const opt = require('optimist')
+const argv =
+opt
+.usage('Usage: sm [options] [target directory]')
+.string('H').alias('H','hook').describe('H','Hook for error 404')
+.alias('P','port').default('P',8080).describe('P', 'Listening port')
+.string('g').alias('g','generate').describe('g','Generate project template')
+.boolean('h').alias('h','help').describe('h','Display help and exit')
+.argv
 
-const argv = require('optimist')
-		.alias('p','port')
-		.alias('g','generate')
-		.boolean('g').argv
-const path = require('path')
-
-
-//解析参数
-if (argv.h || argv.help) {
-	require('./lib/help')()
-	process.exit()
+if (argv.h) {
+	console.log(opt.help())
+	process.exit(0)
 }
 
+const path = require('path')
+
 const opts = {
-	port:		argv.p || argv.port || 8080,
+	port:		argv.port,
 	root_dir:	(argv._[0] || './').toString(),
 	list_dir:	!!(argv.l || argv['list-dir']),
-	hook:		argv.h || argv.hook || ''
+	hook:		argv.hook || ''
 }
 
 if (argv.g || argv.generate) {
