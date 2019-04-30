@@ -1,6 +1,6 @@
 {
   "name": "servermore",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "serve websites from git repo",
   "main": "index.js",
   "bin": {
