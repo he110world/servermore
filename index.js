@@ -1,12 +1,19 @@
 #!/usr/bin/env node
+const path = require('path')
+const url = require('url')
+const fs = require('fs')
+
+//parse arguments
 const opt = require('optimist')
 const argv =
 opt
-.usage('Usage: sm [options] [target directory]')
-.string('H').alias('H','hook').describe('H','Hook for error 404')
-.alias('P','port').default('P',8080).describe('P', 'Listening port')
-.string('g').alias('g','generate').describe('g','Generate project template')
-.boolean('h').alias('h','help').describe('h','Display help and exit')
+.usage('Server manager with built in CI support.\n\nUsage: sm [options] [target directory]')
+.string('g').alias('g','git').describe('g','Git server URL')
+.string('u').alias('u','username').describe('u','Git CI account username')
+.string('p').alias('p','password').describe('p','Git CI account password')
+.string('c').alias('c','config').alias('c','cfg').describe('c','Config json file')
+.default('P',8080).alias('P','port').describe('P','Listening port')
+.boolean('h').alias('h','help').describe('h','Show this help and exit')
 .argv
 
 if (argv.h) {
@@ -14,24 +21,23 @@ if (argv.h) {
 	process.exit(0)
 }
 
-const path = require('path')
+const ip = require('ip')
+const ip_addr = ip.address()
+const ip_port = `${ip_addr}:${argv.port}`
 
 const opts = {
-	port:		argv.port,
-	root_dir:	(argv._[0] || './').toString(),
-	list_dir:	!!(argv.l || argv['list-dir']),
-	hook:		argv.hook || ''
+	port:	argv.port,
+	dir:	path.resolve(String(argv._[0] || './')),
+	git:	argv.g ? url.parse(argv.g) : null,
+	username:	argv.username,
+	password:	argv.password,
+	git_hook:	`http://${ip_port}/hook/gogs/push`
 }
 
-if (argv.g || argv.generate) {
-	require('./lib/generate')(opts.root_dir)
+//create target directory if not exist
+const mkdirp = require('mkdirp')
+mkdirp(opts.dir, err=>{if(err)console.log(err)})
 
-	console.log(`Project generated. Now run 'sm ${opts.root_dir}' to start the service!`)
-	process.exit()
-}
-
-
-//创建服务器
 const Koa = require('koa')
 const Router = require('koa-router')
 const app = new Koa()
@@ -43,6 +49,9 @@ const bodyparser = require('koa-bodyparser')
 const logger = require('koa-logger')
 const formidable = require('koa2-formidable')
 
+const git = require('isomorphic-git')
+git.plugins.set('fs',fs)
+
 onerror(app)
 app
 .use(logger())
@@ -52,16 +61,30 @@ app
 .use(router.routes())
 .use(router.allowedMethods())
 
-app.on('error', function(err, ctx) {
+app.on('error', (err, ctx)=>{
 	console.error('server error', err)
 })
 
-const server = app.listen(opts.port, () => {
-	console.log(`servermore listening on port ${opts.port}`)
+app.listen(opts.port, () => {
+	const git_msg = opts.git ? `\nGit server: ${opts.git.href}\n` : ''
+	const msg = 
+`
+Servermore-ci is up and running.
+${git_msg}
+Local repo: ${opts.dir}
+
+Hook:
+	http://${ip_port}/hook/gogs/push
+
+Dashboard:
+	http://${ip_port}/dashboard
+`
+	console.log(msg)
 })
 
-const main = require('./lib/main')
-opts.router = router
-main(opts)
+//后台
+require('./lib/dashboard')(router, opts)
+require('./lib/ci')(router, opts)
+require('./lib/hook')(router, opts)
+require('./lib/main')(router, opts)
 
-module.exports = server
