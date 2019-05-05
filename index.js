@@ -25,6 +25,12 @@ const ip = require('ip')
 const ip_addr = ip.address()
 const ip_port = `${ip_addr}:${argv.port}`
 
+//如果target dir是.js或.json文件，就当成是cfg文件
+if (typeof argv._[0]==='string' && (argv._[0].endsWith('.js')||argv._[0].endsWith('.json'))) {
+	argv.c = argv._[0]
+	argv._[0] = ''
+}
+
 const opts = {
 	port:	argv.port,
 	dir:	path.resolve(String(argv._[0] || './')),
