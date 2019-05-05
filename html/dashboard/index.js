@@ -1,7 +1,7 @@
 imgui.contextify(function(){
 	const dom = document.getElementById('index')
 	let window_rect = imgui.rect(100,100,500,300)
-	let repo_list
+	let repo_list, npm_list
 
 	const api_url = '/api/ci'
 
@@ -132,7 +132,7 @@ imgui.contextify(function(){
 		if (repo.api_list) {
 			layout.beginVertical()
 			for(const a of repo.api_list){
-				layout.label(a)
+				layout.hyperlink(a,a.replace(`/${repo.full_name}/api/`,''))
 			}
 			layout.endVertical()
 		}
@@ -167,22 +167,64 @@ imgui.contextify(function(){
 	.catch(err=>console.log(err))
 
 
+	let npm_dirty = false
+	let show_npm_list = false
+	function draw_npm_btn(layout){
+		const str = show_npm_list ? '隐藏npm列表' : '显示npm列表'
+
+		if (npm_dirty){
+			layout.label('正在获取npm列表')
+		} else {
+			if (layout.button(str)){
+				if (show_npm_list) {
+					npm_list = null
+				} else {
+					npm_dirty = true
+					invoke_api('/npm/list').then(res=>{
+						npm_list=res
+						npm_dirty = false
+					})
+				}
+				show_npm_list = !show_npm_list
+			}
+		}
+	}
+
+	function draw_npm_list(layout){
+		//显示npm列表
+		if (!npm_dirty && show_npm_list && npm_list && npm_list.length>0) {
+			layout.beginVertical()
+			for(const n of npm_list){
+				layout.label(n)
+			}
+			layout.endVertical()
+		}
+	}
 
 	imgui.layout(dom, function(layout){
 		window_rect = layout.window(window_rect, function(){
 			if (repo_list) {
 				layout.beginVertical()
+
+				layout.beginHorizontal()
+
+				draw_npm_btn(layout)
+
 				if (layout.button('退出登录')){
 					invoke_api('/logout')
 					repo_list=null
 					return
 				}
+				layout.endHorizontal()
 
+				draw_npm_list(layout)
+
+	
 				for(const repo of repo_list){
 					draw_repo(layout,repo)
 				}
 				layout.endVertical()
 			}
-		},'仓库列表')
+		},'控制台')
 	})
 })
