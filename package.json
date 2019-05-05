@@ -39,6 +39,7 @@
     "koa2-formidable": "^1.0.2",
     "mime-types": "^2.1.21",
     "mkdirp": "^0.5.1",
+    "ncp": "^2.0.0",
     "node-watch": "^0.6.0",
     "npm-programmatic": "0.0.12",
     "optimist": "^0.6.1",

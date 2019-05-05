@@ -34,6 +34,27 @@ const opts = {
 	git_hook:	`http://${ip_port}/hook/gogs/push`
 }
 
+//配置文件
+if (argv.c) {
+	try{
+		const cfg_path = path.resolve(argv.c)
+		const cfg_str = fs.readFileSync(cfg_path, 'utf8')
+		const cfg = eval(cfg_str)
+		for(const k in cfg){
+			if (k === 'git') {
+				opts.git = url.parse(cfg.git)
+			} else if (k === 'dir') {
+				opts.dir = path.resolve(String(cfg.dir))
+			} else {
+				opts[k] = cfg[k]
+			}
+		}
+	}catch(e){
+		console.log(e)
+	}
+}
+
+
 //create target directory if not exist
 const mkdirp = require('mkdirp')
 mkdirp(opts.dir, err=>{if(err)console.log(err)})

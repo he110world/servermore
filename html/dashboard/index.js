@@ -1,7 +1,9 @@
 imgui.contextify(function(){
 	const dom = document.getElementById('index')
-	let window_rect = imgui.rect(100,100,500,300)
+	let repo_window_rect = imgui.rect(100,100,500,300)
+	let repo_new_rect = imgui.rect(150,150,300,300)
 	let repo_list, npm_list
+	let show_repo_new = false
 
 	const api_url = '/api/ci'
 
@@ -30,7 +32,11 @@ imgui.contextify(function(){
 		if(layout.button(repo._expanded?'-':'+','width:25px;')){
 			repo._expanded = !repo._expanded
 		}
-		layout.label(repo.full_name)
+		layout.label(repo.full_name,'width:fit-content;')
+
+		//edit api src
+		const edit_url = '/api/ci/edit/' + repo.full_name
+		layout.hyperlink(edit_url,'⧉')
 
 		layout.endHorizontal()
 	}
@@ -262,6 +268,20 @@ imgui.contextify(function(){
 		}
 	}
 
+	function draw_new_repo_btn(layout){
+		if (layout.button('新建工程')){
+			show_repo_new = true
+		}
+	}
+
+	function draw_logout_btn(layout){
+		if (layout.button('退出登录')){
+			invoke_api('/logout')
+			repo_list=null
+			return
+		}
+	}
+
 	function draw_npm_list(layout){
 		//显示npm列表
 		if (!npm_dirty && show_npm_list && npm_list && npm_list.length>0) {
@@ -273,8 +293,11 @@ imgui.contextify(function(){
 		}
 	}
 
+
+	let repo_new_data = {}
+	let repo_new_pending = false
 	imgui.layout(dom, function(layout){
-		window_rect = layout.window(window_rect, function(){
+		repo_window_rect = layout.window(repo_window_rect, function(){
 			if (repo_list) {
 				layout.beginVertical()
 
@@ -282,11 +305,10 @@ imgui.contextify(function(){
 
 				draw_npm_btn(layout)
 
-				if (layout.button('退出登录')){
-					invoke_api('/logout')
-					repo_list=null
-					return
-				}
+				draw_new_repo_btn(layout)
+
+				draw_logout_btn(layout)
+
 				layout.endHorizontal()
 
 				draw_npm_list(layout)
@@ -298,5 +320,51 @@ imgui.contextify(function(){
 				layout.endVertical()
 			}
 		},'控制台')
+
+		if (show_repo_new) {
+			repo_new_rect = layout.window(repo_new_rect, function(){
+
+				layout.beginVertical()
+
+				//工程名
+				repo_new_data.name = layout.textField(repo_new_data.name, '工程名')
+
+				//按钮
+				if (repo_new_pending) {
+					layout.label(`正在创建${repo_new_data.name}...`)
+				} else {
+					layout.beginHorizontal()
+					if (layout.button('确定')) {
+						if (repo_new_data.name) {
+							repo_new_pending = true
+
+							invoke_api('/repo/new', repo_new_data)
+							.then(res=>{
+								//刷新repo列表
+								invoke_api('/user/repos')
+								.then(res=>{
+									repo_list=res
+									show_repo_new = false
+									repo_new_pending = false
+								})
+								.catch(err=>console.log(err))
+							})
+							.catch(err=>{
+								console.log(err)
+							})
+						} else {
+							alert('工程名不能为空！')
+						}
+					}
+					if (layout.button('取消')) {
+						repo_new_data = {}
+						show_repo_new = false
+					}
+					layout.endHorizontal()
+				}
+
+				layout.endVertical()
+			},'新建工程')
+		}
 	})
 })
