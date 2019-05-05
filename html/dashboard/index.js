@@ -75,18 +75,6 @@ imgui.contextify(function(){
 					.catch(err=>console.log(err))
 				}
 
-				if (repo.api_list) {
-					if (layout.button('隐藏API列表')) {
-						delete repo.api_list
-					}
-				} else {
-					if (layout.button('显示API列表')) {
-						invoke_api('/repo/apis', {full_name:repo.full_name})
-						.then(res=>{
-							repo.api_list = res
-						})
-					}
-				}
 			} else {
 				if (repo.cloning) {
 					layout.label('正在部署...')
@@ -125,17 +113,101 @@ imgui.contextify(function(){
 				}
 			}
 
+
 		}
 
 		layout.endHorizontal()
 
 		if (repo.api_list) {
+			if (layout.button('隐藏API列表')) {
+				delete repo.api_list
+			}
+		} else {
+			if (layout.button('显示API列表')) {
+				invoke_api('/repo/apis', {full_name:repo.full_name})
+				.then(res=>{
+					repo.api_list = res
+				})
+			}
+		}
+
+
+		if (repo.api_list) {
 			layout.beginVertical()
 			for(const a of repo.api_list){
+				layout.beginHorizontal()
+				//api link
 				layout.hyperlink(a,a.replace(`/${repo.full_name}/api/`,''))
+
+				//edit api src
+				const edit_url = '/api/ci/edit' + a
+				layout.hyperlink(edit_url,'⧉')
+				layout.endHorizontal()
 			}
 			layout.endVertical()
 		}
+
+		if (repo.module_list) {
+			if (layout.button('隐藏module列表')) {
+				delete repo.module_list
+			}
+		} else {
+			if (layout.button('显示module列表')) {
+				invoke_api('/repo/modules', {full_name:repo.full_name}).then(res=>{
+					repo.module_list = res
+				})
+			}
+		}
+
+		if (repo.module_list) {
+			layout.beginVertical()
+			for(const m of repo.module_list){
+				layout.beginHorizontal()
+
+				layout.label(m,'width:fit-content;')
+
+				//edit api src
+				const edit_url = `/api/ci/edit/${repo.full_name}/module/${m}`
+				layout.hyperlink(edit_url,'⧉')
+
+				layout.endHorizontal()
+			}
+			layout.endVertical()
+		}
+
+		if (repo.file_list) {
+			if (layout.button('隐藏文件列表')) {
+				delete repo.file_list
+			}
+		} else {
+			if (layout.button('显示文件列表')) {
+				invoke_api('/repo/files', {full_name:repo.full_name}).then(res=>{
+					repo.file_list = res
+				})
+			}
+		}
+
+		if (repo.file_list) {
+			layout.beginVertical()
+			for(const m of repo.file_list){
+				layout.beginHorizontal()
+
+				if (m.endsWith('.html')) {
+					const file_url = `/${repo.full_name}/file/${m}`
+					layout.hyperlink(file_url,m)
+				} else {
+					layout.label(m,'width:fit-content;')
+				}
+
+				//edit api src
+				const edit_url = `/api/ci/edit/${repo.full_name}/file/${m}`
+				layout.hyperlink(edit_url,'⧉')
+
+				layout.endHorizontal()
+			}
+			layout.endVertical()
+		}
+
 	}
 
 	function draw_repo(layout,repo){
