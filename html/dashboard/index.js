@@ -1,6 +1,6 @@
 imgui.contextify(function(){
 	const dom = document.getElementById('index')
-	let repo_window_rect = imgui.rect(100,100,500,300)
+	let repo_window_rect = imgui.rect(10,10,500,300)
 	let repo_new_rect = imgui.rect(150,150,300,300)
 	let repo_list, npm_list
 	let show_repo_new = false
@@ -41,11 +41,21 @@ imgui.contextify(function(){
 		layout.endHorizontal()
 	}
 
+	function format_commit_msg(msg,n){
+		n = n || 20
+		if (msg.length>n) {
+			msg = msg.substr(0,n)+'...'
+		}
+		return msg
+	}
+
 	function draw_repo_info(layout,repo){
+		let show_detail = false
+
 		layout.beginHorizontal()
 
-		if (repo.checkingout) {
-			layout.label('正在检出分支...')
+		if (repo.state) {
+			layout.label(repo.state)
 		} else {
 			const name_list = []
 			let current_idx = -1
@@ -59,6 +69,8 @@ imgui.contextify(function(){
 
 			//已经clone了
 			if (current_idx >= 0) {
+				show_detail = true
+
 				const new_idx = layout.dropDown(current_idx, name_list, '本地分支')
 
 				//切换分支
@@ -67,54 +79,97 @@ imgui.contextify(function(){
 					const newb = repo.branches[new_idx]
 					newb.current = true
 					oldb.current = false
+				}
 
-					const obj = {
-						full_name:repo.full_name,
-						branch:newb.name
+				//commit history
+				const logs = repo.branches[new_idx].logs
+				if (logs) {
+					msg_list = logs.map(log=>log.message)
+					msg_list.push('显示更多...')
+					repo._commit_idx = layout.dropDown(repo._commit_idx, msg_list, '版本')
+				}
+
+				//checkout
+				if (repo._branch_idx !== new_idx || repo._commit_idx>0) {
+					if (layout.button('检出')) {
+						const current_branch = repo.branches.find(r=>r.current)
+						const obj = {
+							full_name:repo.full_name,
+							branch:current_branch.name
+						}
+						if (repo._commit_idx>0) {
+							obj.oid = logs[repo._commit_idx].oid
+						}
+
+						repo.state = '正在检出...'
+
+						invoke_api('/repo/checkout',obj)
+						.then(res=>{
+							update_branches(repo)
+							.then(res=>{
+								delete repo.state
+							})
+							.catch(err=>console.log(err))
+						})
+						.catch(err=>console.log(err))
 					}
+				}
 
-					repo.checkingout = true
-					invoke_api('/repo/checkout',obj)
-					.then(res=>{
-						repo.checkingout = false
+				if (layout.button('☢','width:30px;')) {
+					repo.state = '正在删除...'
+
+					invoke_api('/repo/delete', {full_name:repo.full_name})
+					.then(()=>{
+						update_branches(repo).then(()=>{
+							delete repo.state
+						})
 					})
-					.catch(err=>console.log(err))
+					.catch(e=>console.log(e))
+				}
+
+				//refresh
+				if (layout.button('⟳','width:30px;')) {
+					repo.state = '正在刷新...'
+
+					update_branches(repo).then(()=>{
+						delete repo.state
+					})
 				}
 
 			} else {
-				if (repo.cloning) {
-					layout.label('正在部署...')
-				} else {
-					if (repo.branches.length>0) {
-						repo.remote_branch = repo.remote_branch || 'master'
-						let old_idx
-						for(let i=0; i<repo.branches.length; i++){
-							const b = repo.branches[i]
-							if (b.name === repo.remote_branch){
-								old_idx = i
-							}
+				if (repo.branches.length>0) {
+					repo.remote_branch = repo.remote_branch || 'master'
+					let old_idx
+					for(let i=0; i<repo.branches.length; i++){
+						const b = repo.branches[i]
+						if (b.name === repo.remote_branch){
+							old_idx = i
 						}
-						const new_idx = layout.dropDown(old_idx, name_list, '远程分支')
-						if (new_idx !== old_idx) {
-							repo.remote_branch = repo.branches[new_idx].name
-						}
+					}
+					const new_idx = layout.dropDown(old_idx, name_list, '远程分支')
+					if (new_idx !== old_idx) {
+						repo.remote_branch = repo.branches[new_idx].name
+					}
 
-						if (layout.button('部署')) {
-							const obj = {full_name:repo.full_name,branch:repo.remote_branch}
+					if (layout.button('部署')) {
+						const obj = {full_name:repo.full_name,branch:repo.remote_branch}
 
-							repo.cloning = true
-							invoke_api('/repo/clone',obj)
+						repo.state = '正在部署...'
+
+						invoke_api('/repo/clone',obj)
+						.then(res=>{
+
+							invoke_api('/repo/branches',obj)
 							.then(res=>{
-								repo.cloning = false
-
-								invoke_api('/repo/branches',obj)
-								.then(res=>{
-									repo.branches=res
+								update_branches(repo)
+								.then(()=>{
+									delete repo.state
 								})
-								.catch(err=>console.log(err))
+								.catch(e=>console.log(e))
 							})
 							.catch(err=>console.log(err))
-						}
+						})
+						.catch(err=>console.log(err))
 					}
 				}
 			}
@@ -124,96 +179,116 @@ imgui.contextify(function(){
 
 		layout.endHorizontal()
 
-		if (repo.api_list) {
-			if (layout.button('隐藏API列表')) {
-				delete repo.api_list
-			}
-		} else {
-			if (layout.button('显示API列表')) {
-				invoke_api('/repo/apis', {full_name:repo.full_name})
-				.then(res=>{
-					repo.api_list = res
-				})
-			}
-		}
+		if (show_detail) {
 
-
-		if (repo.api_list) {
-			layout.beginVertical()
-			for(const a of repo.api_list){
-				layout.beginHorizontal()
-				//api link
-				layout.hyperlink(a,a.replace(`/${repo.full_name}/api/`,''))
-
-				//edit api src
-				const edit_url = '/api/ci/edit' + a
-				layout.hyperlink(edit_url,'⧉')
-				layout.endHorizontal()
-			}
-			layout.endVertical()
-		}
-
-		if (repo.module_list) {
-			if (layout.button('隐藏module列表')) {
-				delete repo.module_list
-			}
-		} else {
-			if (layout.button('显示module列表')) {
-				invoke_api('/repo/modules', {full_name:repo.full_name}).then(res=>{
-					repo.module_list = res
-				})
-			}
-		}
-
-		if (repo.module_list) {
-			layout.beginVertical()
-			for(const m of repo.module_list){
-				layout.beginHorizontal()
-
-				layout.label(m,'width:fit-content;')
-
-				//edit api src
-				const edit_url = `/api/ci/edit/${repo.full_name}/module/${m}`
-				layout.hyperlink(edit_url,'⧉')
-
-				layout.endHorizontal()
-			}
-			layout.endVertical()
-		}
-
-		if (repo.file_list) {
-			if (layout.button('隐藏文件列表')) {
-				delete repo.file_list
-			}
-		} else {
-			if (layout.button('显示文件列表')) {
-				invoke_api('/repo/files', {full_name:repo.full_name}).then(res=>{
-					repo.file_list = res
-				})
-			}
-		}
-
-		if (repo.file_list) {
-			layout.beginVertical()
-			for(const m of repo.file_list){
-				layout.beginHorizontal()
-
-				if (m.endsWith('.html')) {
-					const file_url = `/${repo.full_name}/file/${m}`
-					layout.hyperlink(file_url,m)
-				} else {
-					layout.label(m,'width:fit-content;')
+			if (repo.api_list) {
+				if (layout.button('隐藏API列表')) {
+					delete repo.api_list
 				}
-
-				//edit api src
-				const edit_url = `/api/ci/edit/${repo.full_name}/file/${m}`
-				layout.hyperlink(edit_url,'⧉')
-
-				layout.endHorizontal()
+			} else {
+				if (layout.button('显示API列表')) {
+					invoke_api('/repo/apis', {full_name:repo.full_name})
+					.then(res=>{
+						repo.api_list = res
+					})
+				}
 			}
-			layout.endVertical()
-		}
 
+
+			if (repo.api_list) {
+				layout.beginVertical()
+				for(const a of repo.api_list){
+					layout.beginHorizontal()
+					//api link
+					layout.hyperlink(a,a.replace(`/${repo.full_name}/api/`,''))
+
+					//edit api src
+					const edit_url = '/api/ci/edit' + a
+					layout.hyperlink(edit_url,'⧉')
+					layout.endHorizontal()
+				}
+				layout.endVertical()
+			}
+
+			if (repo.module_list) {
+				if (layout.button('隐藏module列表')) {
+					delete repo.module_list
+				}
+			} else {
+				if (layout.button('显示module列表')) {
+					invoke_api('/repo/modules', {full_name:repo.full_name}).then(res=>{
+						repo.module_list = res
+					})
+				}
+			}
+
+			if (repo.module_list) {
+				layout.beginVertical()
+				for(const m of repo.module_list){
+					layout.beginHorizontal()
+
+					layout.label(m,'width:fit-content;')
+
+					//edit api src
+					const edit_url = `/api/ci/edit/${repo.full_name}/module/${m}`
+					layout.hyperlink(edit_url,'⧉')
+
+					layout.endHorizontal()
+				}
+				layout.endVertical()
+			}
+
+			if (repo.file_list) {
+				if (layout.button('隐藏文件列表')) {
+					delete repo.file_list
+				}
+			} else {
+				if (layout.button('显示文件列表')) {
+					invoke_api('/repo/files', {full_name:repo.full_name}).then(res=>{
+						repo.file_list = res
+					})
+				}
+			}
+
+			if (repo.file_list) {
+				layout.beginVertical()
+				for(const m of repo.file_list){
+					layout.beginHorizontal()
+
+					if (m.endsWith('.html')) {
+						const file_url = `/${repo.full_name}/file/${m}`
+						layout.hyperlink(file_url,m)
+					} else {
+						layout.label(m,'width:fit-content;')
+					}
+
+					//edit api src
+					const edit_url = `/api/ci/edit/${repo.full_name}/file/${m}`
+					layout.hyperlink(edit_url,'⧉')
+
+					layout.endHorizontal()
+				}
+				layout.endVertical()
+			}
+		}
+	}
+
+	function update_branches(repo){
+		return new Promise((resolve,reject)=>{
+			repo.branches = []
+			const obj = {full_name:repo.full_name}
+			invoke_api('/repo/branches', obj)
+			.then(branch_list=>{
+				repo.branches=branch_list
+				repo._branch_idx = branch_list.findIndex(b=>b.current)
+				repo._commit_idx = 0
+				resolve()
+			})
+			.catch(err=>{
+				console.error(err)
+				reject(err)
+			})
+		})
 	}
 
 	function draw_repo(layout,repo){
@@ -225,14 +300,7 @@ imgui.contextify(function(){
 		//repo status
 		if (repo._expanded) {
 			if (!repo.branches) {
-				//branch info
-				repo.branches = []
-				const obj = {full_name:repo.full_name}
-				invoke_api('/repo/branches', obj)
-				.then(res=>{
-					repo.branches=res
-				})
-				.catch(err=>console.error(err))
+				update_branches(repo)
 			} else {
 				draw_repo_info(layout,repo)
 			}
