@@ -2,8 +2,9 @@ imgui.contextify(function(){
 	const dom = document.getElementById('index')
 	let repo_window_rect = imgui.rect(10,10,500,300)
 	let repo_new_rect = imgui.rect(150,150,300,300)
+	let branch_new_rect = imgui.rect(150,150,300,300)
 	let repo_list, npm_list
-	let show_repo_new = false
+	let show_repo_new = false, show_branch_new = false
 
 	const api_url = '/api/ci'
 
@@ -115,6 +116,7 @@ imgui.contextify(function(){
 					}
 				}
 
+				//delete local repo
 				if (layout.button('☢','width:30px;')) {
 					repo.state = '正在删除...'
 
@@ -125,6 +127,12 @@ imgui.contextify(function(){
 						})
 					})
 					.catch(e=>console.log(e))
+				}
+
+				//create a branch
+				if (layout.button('➕','width:30px;')) {
+					branch_new_data.full_name = repo.full_name
+					show_branch_new = true
 				}
 
 				//refresh
@@ -362,8 +370,8 @@ imgui.contextify(function(){
 	}
 
 
-	let repo_new_data = {}
-	let repo_new_pending = false
+	let repo_new_data = {}, branch_new_data = {}
+	let repo_new_pending = false, branch_new_pending = false
 	imgui.layout(dom, function(layout){
 		repo_window_rect = layout.window(repo_window_rect, function(){
 			if (repo_list) {
@@ -433,6 +441,54 @@ imgui.contextify(function(){
 
 				layout.endVertical()
 			},'新建工程')
+		}
+
+		if (show_branch_new) {
+			branch_new_rect = layout.window(branch_new_rect, function(){
+
+				layout.beginVertical()
+
+				//分支名
+				branch_new_data.branch = layout.textField(branch_new_data.branch, '分支名')
+
+				//按钮
+				if (branch_new_pending) {
+					layout.label(`正在创建${branch_new_data.name}...`)
+				} else {
+					layout.beginHorizontal()
+					if (layout.button('确定')) {
+						if (branch_new_data.branch) {
+							branch_new_pending = true
+
+							invoke_api('/branch/new', branch_new_data)
+							.then(res=>{
+								//刷新repo列表
+								invoke_api('/user/repos')
+								.then(res=>{
+									repo_list=res
+									show_branch_new = false
+									branch_new_pending = false
+								})
+								.catch(err=>console.log(err))
+							})
+							.catch(err=>{
+								console.log(err)
+							})
+						} else {
+							alert('分支名不能为空！')
+						}
+					}
+					if (layout.button('取消')) {
+						delete branch_new_data.full_name
+						delete branch_new_data.branch
+						show_branch_new = false
+					}
+					layout.endHorizontal()
+				}
+
+				layout.endVertical()
+			},'新建分支')
+
 		}
 	})
 })
