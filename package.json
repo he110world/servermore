@@ -27,7 +27,7 @@
     "base-64": "^0.1.0",
     "bluebird": "^3.5.3",
     "fs-extra": "^7.0.1",
-    "imgui": "^1.0.9",
+    "imgui": "^1.0.10",
     "ip": "^1.1.5",
     "is-builtin-module": "^3.0.0",
     "isomorphic-git": "^0.54.2",
